@@ -12,6 +12,7 @@
 *
 \******************************************************************************/
 
+#include "cali-annotations.h"
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
@@ -490,6 +491,7 @@ option_help * createGlobalOptions(IOR_param_t * params){
  */
 IOR_test_t *ParseCommandLine(int argc, char **argv, MPI_Comm com)
 {
+    CALI_MARK_FUNCTION_BEGIN;
     init_IOR_Param_t(& initialTestParams, com);
 
     IOR_test_t *tests = NULL;
@@ -511,5 +513,6 @@ IOR_test_t *ParseCommandLine(int argc, char **argv, MPI_Comm com)
 
     CheckRunSettings(tests);
 
+    CALI_MARK_FUNCTION_END;
     return (tests);
 }

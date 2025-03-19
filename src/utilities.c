@@ -135,9 +135,11 @@ void update_write_memory_pattern(uint64_t item, char * buf, size_t bytes, int ra
  * @param dataPacketType identifier to designate pattern to fill buffer
  */
 void generate_memory_pattern(char * buf, size_t bytes, int rand_seed, int pretendRank, ior_dataPacketType_e dataPacketType, ior_memory_flags type){
+  CALI_MARK_FUNCTION_BEGIN;
 #ifdef HAVE_GPU_DIRECT
   if(type == IOR_MEMORY_TYPE_GPU_DEVICE_ONLY || type == IOR_MEMORY_TYPE_GPU_MANAGED_CHECK_GPU){
     generate_memory_pattern_gpu(buf, bytes, rand_seed,  pretendRank, dataPacketType);
+    CALI_MARK_FUNCTION_END;
     return;
   }
 #endif
@@ -167,6 +169,7 @@ void generate_memory_pattern(char * buf, size_t bytes, int rand_seed, int preten
   for(size_t i=size*8; i < bytes; i++){
     buf[i] = (char) i;
   }
+  CALI_MARK_FUNCTION_END;
 }
 
 void invalidate_buffer_pattern(char * buffer, size_t bytes, ior_memory_flags type){

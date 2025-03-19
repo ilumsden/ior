@@ -8,6 +8,7 @@
 *                                                                              *
 \******************************************************************************/
 
+#include "cali-annotations.h"
 #ifdef HAVE_CONFIG_H
 # include "config.h"
 #endif
@@ -96,6 +97,7 @@ int aiori_warning_as_errors = 0;
  Returns 1 if the process participates in the test
  */
 static int test_initialize(IOR_test_t * test){
+  CALI_MARK_FUNCTION_BEGIN;
   int range[3];
   IOR_param_t *params = &test->params;
   MPI_Group orig_group, new_group;
@@ -117,6 +119,7 @@ static int test_initialize(IOR_test_t * test){
   if (params->testComm == MPI_COMM_NULL) {
     /* tasks not in the group do not participate in this test, this matches the proceses in test_finalize() that participate */
     MPI_CHECK(MPI_Barrier(params->mpi_comm_world), "barrier error");
+    CALI_MARK_FUNCTION_END;
     return 0;
   }
 
@@ -139,6 +142,7 @@ static int test_initialize(IOR_test_t * test){
   if (rank == 0 && verbose >= VERBOSE_0) {
     ShowTestStart(& test->params);
   }
+  CALI_MARK_FUNCTION_END;
   return 1;
 }
 
@@ -153,6 +157,7 @@ static void test_finalize(IOR_test_t * test){
 
 
 IOR_test_t * ior_run(int argc, char **argv, MPI_Comm world_com, FILE * world_out){
+        CALI_MARK_FUNCTION_BEGIN;
         IOR_test_t *tests_head;
         IOR_test_t *tptr;
         out_logfile = world_out;
@@ -181,6 +186,7 @@ IOR_test_t * ior_run(int argc, char **argv, MPI_Comm world_com, FILE * world_out
 
         /* display finish time */
         PrintTestEnds();
+        CALI_MARK_FUNCTION_END;
         return tests_head;
 }
 
@@ -188,8 +194,10 @@ IOR_test_t * ior_run(int argc, char **argv, MPI_Comm world_com, FILE * world_out
 
 int ior_main(int argc, char **argv)
 {
+    CALI_MARK_FUNCTION_BEGIN;
     IOR_test_t *tests_head;
     IOR_test_t *tptr;
+    size_t loop_iter_counter = 0;
 
     out_logfile = stdout;
     out_resultfile = stdout;
@@ -214,7 +222,10 @@ int ior_main(int argc, char **argv)
     PrintHeader(argc, argv);
 
     /* perform each test */
+    CALI_MARK_LOOP_BEGIN(ior_main_loop_region, "ior_main_loop");
     for (tptr = tests_head; tptr != NULL; tptr = tptr->next) {
+            CALI_MARK_ITERATION_BEGIN(ior_main_loop_region, loop_iter_counter);
+            loop_iter_counter += 1;
             int participate = test_initialize(tptr);
             if( ! participate ) continue;
 
@@ -229,7 +240,9 @@ int ior_main(int argc, char **argv)
             TestIoSys(tptr);
             ShowTestEnd(tptr);
             test_finalize(tptr);
+            CALI_MARK_ITERATION_END(ior_main_loop_region);
     }
+    CALI_MARK_LOOP_END(ior_main_loop_region);
 
     if (verbose <= VERBOSE_0)
             /* always print final summary */
@@ -243,6 +256,7 @@ int ior_main(int argc, char **argv)
 
     DestroyTests(tests_head);
 
+    CALI_MARK_FUNCTION_END;
     return totalErrorCount;
 }
 
@@ -840,7 +854,9 @@ static void RemoveFile(char *testFileName, int filePerProc, IOR_param_t * test)
  */
 static void InitTests(IOR_test_t *tests)
 {
+        CALI_MARK_FUNCTION_BEGIN;
         if(tests == NULL){
+          CALI_MARK_FUNCTION_END;
           return;
         }
         MPI_Comm com = tests->params.mpi_comm_world;
@@ -898,6 +914,7 @@ static void InitTests(IOR_test_t *tests)
         }
 
         init_clock(com);
+        CALI_MARK_FUNCTION_END;
 }
 
 /*
@@ -906,7 +923,9 @@ static void InitTests(IOR_test_t *tests)
 static void XferBuffersSetup(IOR_io_buffers* ioBuffers, IOR_param_t* test,
                              int pretendRank)
 {
+        CALI_MARK_FUNCTION_BEGIN;
         ioBuffers->buffer = aligned_buffer_alloc(test->transferSize, test->gpuMemoryFlags);
+        CALI_MARK_FUNCTION_END;
 }
 
 /*
@@ -1150,6 +1169,7 @@ static void ProcessIterResults(IOR_test_t *test, double *timer, const int rep, c
  */
 static void TestIoSys(IOR_test_t *test)
 {
+        CALI_MARK_FUNCTION_BEGIN;
         IOR_param_t *params = &test->params;
         IOR_results_t *results = test->results;
         char testFileName[MAX_STR];
@@ -1246,7 +1266,9 @@ static void TestIoSys(IOR_test_t *test)
                         MPI_CHECK(MPI_Barrier(testComm), "barrier error");
                         params->open = WRITE;
                         timer[IOR_TIMER_OPEN_START] = GetTimeStamp();
+                        CALI_MARK_BEGIN("backend_create");
                         fd = backend->create(testFileName, IOR_WRONLY | IOR_CREAT | IOR_TRUNC, params->backend_options);
+                        CALI_MARK_END("backend_create");
                         if(fd == NULL) FAIL("Cannot create file");
                         timer[IOR_TIMER_OPEN_STOP] = GetTimeStamp();
                         if (params->intraTestBarriers)
@@ -1268,7 +1290,9 @@ static void TestIoSys(IOR_test_t *test)
                                 MPI_CHECK(MPI_Barrier(testComm),
                                           "barrier error");
                         timer[IOR_TIMER_CLOSE_START] = GetTimeStamp();
+                        CALI_MARK_BEGIN("backend_close");
                         backend->close(fd, params->backend_options);
+                        CALI_MARK_END("backend_close");
 
                         timer[IOR_TIMER_CLOSE_STOP] = GetTimeStamp();
                         MPI_CHECK(MPI_Barrier(testComm), "barrier error");
@@ -1461,6 +1485,7 @@ static void TestIoSys(IOR_test_t *test)
 
         if (hog_buf != NULL)
                 free(hog_buf);
+        CALI_MARK_FUNCTION_END;
 }
 
 /*
@@ -1673,6 +1698,7 @@ IOR_offset_t *GetOffsetArrayRandom(IOR_param_t * test, int pretendRank, IOR_offs
 }
 
 static IOR_offset_t WriteOrReadSingle(IOR_offset_t offset, int pretendRank, IOR_offset_t transfer, int * errors, IOR_param_t * test, aiori_fd_t * fd, IOR_io_buffers* ioBuffers, int access, OpTimer* ot, double startTime){
+  CALI_MARK_FUNCTION_BEGIN;
   IOR_offset_t amtXferred = 0;
 
   void *buffer = ioBuffers->buffer;
@@ -1681,19 +1707,26 @@ static IOR_offset_t WriteOrReadSingle(IOR_offset_t offset, int pretendRank, IOR_
            * containing the offset into the file */
           update_write_memory_pattern(offset, ioBuffers->buffer, transfer, test->setTimeStampSignature, pretendRank, test->dataPacketType, test->gpuMemoryFlags);
           double start = GetTimeStamp();
+          CALI_MARK_BEGIN("backend_xfer");
           amtXferred = backend->xfer(access, fd, buffer, transfer, offset, test->backend_options);
+          CALI_MARK_END("backend_xfer");
           if(ot) OpTimerValue(ot, start - startTime, GetTimeStamp() - start);
           if (amtXferred != transfer)
                   ERR("cannot write to file");
-          if (test->fsyncPerWrite)
+          if (test->fsyncPerWrite) {
+                CALI_MARK_BEGIN("backend_fsync");
                 backend->fsync(fd, test->backend_options);
+                CALI_MARK_END("backend_fsync");
+          }
           if (test->interIODelay > 0){
             struct timespec wait = {test->interIODelay / 1000 / 1000, 1000l * (test->interIODelay % 1000000)};
             nanosleep( & wait, NULL);
           }
   } else if (access == READ) {
           double start = GetTimeStamp();
+          CALI_MARK_BEGIN("backend_xfer");
           amtXferred = backend->xfer(access, fd, buffer, transfer, offset, test->backend_options);
+          CALI_MARK_END("backend_xfer");
           if(ot) OpTimerValue(ot, start - startTime, GetTimeStamp() - start);
           if (amtXferred != transfer)
                   ERR("cannot read from file");
@@ -1704,7 +1737,9 @@ static IOR_offset_t WriteOrReadSingle(IOR_offset_t offset, int pretendRank, IOR_
   } else if (access == WRITECHECK) {
           invalidate_buffer_pattern(buffer, transfer, test->gpuMemoryFlags);
           double start = GetTimeStamp();
+          CALI_MARK_BEGIN("backend_xfer");
           amtXferred = backend->xfer(access, fd, buffer, transfer, offset, test->backend_options);
+          CALI_MARK_END("backend_xfer");
           if(ot) OpTimerValue(ot, start - startTime, GetTimeStamp() - start);
           if (amtXferred != transfer)
                   ERR("cannot read from file write check");
@@ -1712,17 +1747,21 @@ static IOR_offset_t WriteOrReadSingle(IOR_offset_t offset, int pretendRank, IOR_
   } else if (access == READCHECK) {
           invalidate_buffer_pattern(buffer, transfer, test->gpuMemoryFlags);          
           double start = GetTimeStamp();
+          CALI_MARK_BEGIN("backend_xfer");
           amtXferred = backend->xfer(access, fd, buffer, transfer, offset, test->backend_options);
+          CALI_MARK_END("backend_xfer");
           if(ot) OpTimerValue(ot, start - startTime, GetTimeStamp() - start);
           if (amtXferred != transfer){
             ERR("cannot read from file");
           }
           *errors += CompareData(buffer, transfer, test, offset, pretendRank, READCHECK);
   }
+  CALI_MARK_FUNCTION_END;
   return amtXferred;
 }
 
 static void prefillSegment(IOR_param_t *test, void * randomPrefillBuffer, int pretendRank, aiori_fd_t *fd, IOR_io_buffers *ioBuffers, int startSegment, int endSegment){
+  CALI_MARK_FUNCTION_BEGIN;
   // prefill the whole file already with an invalid pattern
   int offsets = test->blockSize / test->randomPrefillBlocksize;
   void * oldBuffer = ioBuffers->buffer;
@@ -1740,6 +1779,7 @@ static void prefillSegment(IOR_param_t *test, void * randomPrefillBuffer, int pr
     }
   }
   ioBuffers->buffer = oldBuffer;
+  CALI_MARK_FUNCTION_END;
 }
 
 /*
@@ -1749,6 +1789,7 @@ static void prefillSegment(IOR_param_t *test, void * randomPrefillBuffer, int pr
 static IOR_offset_t WriteOrRead(IOR_param_t *test, int rep, IOR_results_t *results,
                                 aiori_fd_t *fd, const int access, IOR_io_buffers *ioBuffers)
 {
+        CALI_MARK_FUNCTION_BEGIN;
         int errors = 0;
         uint64_t pairCnt = 0;
         int pretendRank;
@@ -1756,6 +1797,7 @@ static IOR_offset_t WriteOrRead(IOR_param_t *test, int rep, IOR_results_t *resul
         double startForStonewall;
         int hitStonewall;
         IOR_offset_t i, j;
+        int min_time_loop_counter = 0;
         IOR_point_t *point = ((access == WRITE) || (access == WRITECHECK)) ?
                              &results->write : &results->read;
 
@@ -1803,8 +1845,11 @@ static IOR_offset_t WriteOrRead(IOR_param_t *test, int rep, IOR_results_t *resul
           // must synchronize processes to ensure they are not running ahead
           MPI_Barrier(test->testComm);
         }
+        CALI_MARK_LOOP_BEGIN(min_time_exec_loop, "min_time_exec");
         do{ // to ensure the benchmark runs a certain time
           for (i = 0; i < test->segmentCount && !hitStonewall; i++) {
+            CALI_MARK_ITERATION_BEGIN(min_time_exec_loop, min_time_loop_counter);
+            min_time_loop_counter += 1;
             IOR_offset_t offset;
             if(randomPrefillBuffer && test->deadlineForStonewalling != 0){
               // prefill the whole segment with data, this needs to be done collectively
@@ -1857,9 +1902,13 @@ static IOR_offset_t WriteOrRead(IOR_param_t *test, int rep, IOR_results_t *resul
                 MPI_CHECK(MPI_Bcast(&hitStonewall, 1, MPI_INT, 0, testComm), "hitStonewall broadcast failed");
               }
             }
+            CALI_MARK_ITERATION_END(min_time_exec_loop);
           }
         } while((GetTimeStamp() - startForStonewall) < test->minTimeDuration);
+        CALI_MARK_LOOP_END(min_time_exec_loop);
+        min_time_loop_counter = 0;
         if (test->stoneWallingWearOut){
+          CALI_MARK_BEGIN("stonewalling");
           if (verbose >= VERBOSE_1){
             fprintf(out_logfile, "%d: stonewalling pairs accessed: %lld\n", rank, (long long) pairCnt);
           }
@@ -1889,7 +1938,10 @@ static IOR_offset_t WriteOrRead(IOR_param_t *test, int rep, IOR_results_t *resul
               j = 0; // current block is completed
               i++;
             }
+            CALI_MARK_LOOP_BEGIN(stonewalling_remaining_work_loop, "stonewalling_remaining_work");
             for ( ; pairCnt < point->pairs_accessed; i++) {
+              CALI_MARK_ITERATION_BEGIN(stonewalling_remaining_work_loop, min_time_loop_counter);
+              min_time_loop_counter += 1;
               IOR_offset_t offset;
               if(i == test->segmentCount) i = 0; // wrap over, necessary to deal with minTimeDuration
               if (test->randomOffset > 1){
@@ -1920,8 +1972,11 @@ static IOR_offset_t WriteOrRead(IOR_param_t *test, int rep, IOR_results_t *resul
                 pairCnt++;
               }
               j = 0;              
+              CALI_MARK_ITERATION_END(stonewalling_remaining_work_loop);
             }
+            CALI_MARK_LOOP_END(stonewalling_remaining_work_loop);
           }
+          CALI_MARK_END("stonewalling");
         }else{
           point->pairs_accessed = pairCnt;
         }
@@ -1930,11 +1985,14 @@ static IOR_offset_t WriteOrRead(IOR_param_t *test, int rep, IOR_results_t *resul
         totalErrorCount += CountErrors(test, access, errors);
 
         if (access == WRITE && test->fsync == TRUE) {
+                CALI_MARK_BEGIN("backend_fsync");
                 backend->fsync(fd, test->backend_options);       /*fsync after all accesses */
+                CALI_MARK_END("backend_fsync");
         }
         if(randomPrefillBuffer){
           aligned_buffer_free(randomPrefillBuffer, test->gpuMemoryFlags);
         }
 
+        CALI_MARK_FUNCTION_END;
         return (dataMoved);
 }

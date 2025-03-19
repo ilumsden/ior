@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "cali-annotations.h"
+
 typedef enum {
   DATA_TIMESTAMP, /* Will not include any offset, hence each buffer will be the same */
   DATA_OFFSET,
