@@ -79,6 +79,28 @@ AS_IF([test "$ac_cv_header_gpfs_h" = "yes" -o "$ac_cv_header_gpfs_fcntl_h" = "ye
     ])
 ])
 
+# Check for Caliper
+AC_ARG_WITH([caliper],
+        [AS_HELP_STRING([--with-caliper],
+                [support Caliper @<:@default=check@:>@])],
+        [], [with_caliper=check])
+AS_IF([test "x$with_caliper" != xno], [
+        LDFLAGS="$LDFLAGS -L$with_caliper/lib64 -L$with_caliper/lib -Wl,--enable-new-dtags -Wl,-rpath=$with_caliper/lib64:$with_caliper/lib"
+        CPPFLAGS="$CPPFLAGS -I$with_caliper/include"
+
+        AC_CHECK_HEADERS([caliper/cali.h], [AC_DEFINE([HAVE_CALIPER], [], [Caliper found])], [
+                if test "x$with_caliper" != xcheck; then
+                        AC_MSG_FAILURE([--with-caliper was given, <caliper/cali.h> not found])
+                fi
+        ])
+AS_IF([test "$ac_cv_header_caliper_cali_h" = "yes"], [
+        AC_SEARCH_LIBS([cali_begin_region], [caliper], [],
+        [AC_MSG_ERROR([Caliper library not found])])
+    ])
+])
+AM_CONDITIONAL([HAVE_CALIPER], [test x$ac_cv_search_cali_begin_region != x])
+AM_COND_IF([HAVE_CALIPER], [AC_DEFINE([HAVE_CALIPER], [], [Caliper found])])
+
 # Check for CUDA
 AC_ARG_WITH([cuda],
         [AS_HELP_STRING([--with-cuda],
